@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<link rel="stylesheet" href="js/layui/css/layui.css" />
+		
+	</head>
+	<body>
+		 <span class="fl">
+            <a class="layui-btn btn-add btn-default" id="btn-add">添加法律</a>
+            <a class="layui-btn btn-add btn-default" id="btn-refresh"><i class="layui-icon">&#xe666;</i></a>
+        </span>
+        
+        	
+        <!--添加弹出层-->
+<div id="set-add-put" style="display:none; width:550px; padding:20px;">
+    <form class="layui-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">法律名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="layerName" required lay-verify="required" placeholder="请输入法律名称" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">发布年份</label>
+            <div class="layui-input-block">
+                <input type="text" name="releaseTime" required lay-verify="required" placeholder="请输入发布年份" autocomplete="off" class="layui-input" id="time">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">具体描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" placeholder="请输入法律描述" required lay-verify="required" class="layui-textarea"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <div class="layui-upload">
+                    <button type="button" class="layui-btn layui-btn-normal" id="test8">选择文件</button>
+                    <input type="hidden" name="fileName" id="fileName">
+                    <button type="button" class="layui-btn" id="upload">开始上传</button>
+
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button type="button" class="layui-btn" lay-submit lay-filter="addForm" id="add">立即添加</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+
+
+         <!-- 表格,渲染文件列表 -->
+          <div id="dateTable" lay-filter="test"></div>
+
+    </body>
+</html>
+<script type="text/javascript" src="js/jquery-1.12.4.js" ></script>
+<script type="text/javascript" src="js/layui/layui.js"></script>
+<script type="text/javascript" src="js/echarts/echarts.min.js"></script>
+<script>
+	 layui.use(['element', 'form', 'table', 'layer', 'laydate','upload'], function() {
+        var form = layui.form,
+            table = layui.table,
+            layer = layui.layer,
+            vipTable = layui.vip_table,
+            element = layui.element,
+            $ = layui.jquery;
+        var laydate = layui.laydate;
+        var upload = layui.upload;
+
+     //上传
+        upload.render({
+            elem: '#test8'
+            ,url: 'layer/upload'
+            ,auto: false
+            //,multiple: true
+            ,bindAction: '#upload'
+            ,size: 2048 //最大允许上传的文件大小 2M
+            ,accept: 'file' //允许上传的文件类型
+            ,exts:'png'//只上传pdf文档
+            ,done: function(res){
+                console.log(res)
+                if(res.code == 1){//成功的回调
+                    //do something （比如将res返回的图片链接保存到表单的隐藏域）
+                    $('#set-add-put input[name="fileName"]').val(res.fileName);
+                    $('#upload').hide();
+                    layer.msg(res.msg, {
+                        icon: 6
+                    });
+                }else if(res.code==2){
+                    layer.msg(res.msg, {
+                        icon: 5
+                    });
+                }
+            }
+        });
+	 
+	//弹出添加窗口
+        $('#btn-add').click(function() {
+            layer.open({
+                type: 1,
+                skin: 'layui-layer-rim', //加上边框
+                area: ['660px', '350px'], //宽高
+                content: $('#set-add-put'),
+                title: "录入法律法规",
+                end: function(){//弹出层关闭后的回调
+                    $('#upload').show();
+                    form.render();
+                    $('#set-add-put input[name="fileName"]').val("");
+                    // alert(fileName);
+                    $('#set-add-put input[name="layerName"]').val(""); //获取值
+                    $('#set-add-put textarea[name="description"]').val("");
+                    $('#set-add-put input[name="releaseTime"]').val("");
+                },
+                cancel: function(index, layero) {
+                    $('#upload').show();
+                    form.render();
+                    layer.close(index);
+                }
+            });
+        });
+	
+	 //添加数据
+        form.on('submit(addForm)', function(data) {
+            var fileName= $('#set-add-put input[name="fileName"]').val();
+            // alert(fileName);
+            var layerName = $('#set-add-put input[name="layerName"]').val(); //获取值
+            var description = $('#set-add-put textarea[name="description"]').val();
+            var releaseTime=$('#set-add-put input[name="releaseTime"]').val();
+            if (fileName !== '') {
+                //打开正在加载中弹出层
+                layer.msg('加载中', {
+                    icon: 16,
+                    shade: 0.01,
+                    time: '9999999'
+                });
+                var url = "layer/add_layer";
+                var data = {
+                    fileName: fileName,
+                    layerName: layerName,
+                    description: description,
+                    releaseTime:releaseTime
+                }
+                $.post(url, data, function(data) { //使用ajax提交
+                    layer.closeAll();
+                    console.log(data.code);
+                    console.log(data.msg);
+                    layer.msg("执行成功")
+                    if (data.code == 1) { //这里的code对应每行弹窗
+                        layer.msg(data.msg, {
+                            icon: 6
+                        });
+
+                        location.reload();
+                    } else {
+                        layer.msg(data.msg, {
+                            icon: 5
+                        });
+
+                    }
+                }, "json");
+            }else{
+                layer.msg("请先上传文件");
+            }
+        });
+
+
+
+
+         //添加数据,提交数据
+         form.on('submit(addForm)', function(data) {
+             var fileName= $('#set-add-put input[name="fileName"]').val();
+             // alert(fileName);
+             var layerName = $('#set-add-put input[name="layerName"]').val(); //获取值
+             var description = $('#set-add-put textarea[name="description"]').val();
+             var releaseTime=$('#set-add-put input[name="releaseTime"]').val();
+             if (fileName !== '') {
+                 //打开正在加载中弹出层
+                 layer.msg('加载中', {
+                     icon: 16,
+                     shade: 0.01,
+                     time: '9999999'
+                 });
+                 var url = "layer/add_layer";
+                 var data = {
+                     fileName: fileName,
+                     layerName: layerName,
+                     description: description,
+                     releaseTime:releaseTime
+                 }
+                 $.post(url, data, function(data) { //使用ajax提交
+                     layer.closeAll();
+
+                     if (data.code == 1) { //这里的code对应每行弹窗
+                         layer.msg(data.msg, {
+                             icon: 6
+                         });
+
+                         location.reload();
+                     } else {
+                         layer.msg(data.msg, {
+                             icon: 5
+                         });
+
+                     }
+                 }, "json");
+             }else{
+                 layer.msg("请先上传文件");
+             }
+         });
+
+/*
+         // 数据表格
+         function data_table(url) {
+             //打开正在加载中弹出层
+             layer.msg('加载中', {
+                 icon: 16,
+                 shade: 0.01,
+                 time: '9999999'
+             });
+             // 表格渲染
+             tableIns = table.render({
+                 elem: '#dateTable' //指定原始表格元素选择器（推荐id选择器）
+                 ,
+                 height: vipTable.getFullHeight() //容器高度
+                 ,
+                 cols: [
+                     [ //标题栏
+                         {
+                             checkbox: true,
+                             sort: true,
+                             fixed: true
+                         }, {
+                         field: 'layerName',
+                         title: '名称',
+                         sort: true
+                     }, {
+                         field: 'description',
+                         title: '描述',
+                         sort: true
+                     }, {
+                         field: 'releaseTime',
+                         title: '颁布时间',
+                         sort: true
+                     }, {
+                         field: 'recordTime',
+                         title: '录入时间',
+                         sort: true
+                     }, {
+                         fixed: 'right',
+                         title: '操作',
+                         align: 'center',
+                         toolbar: '#barOption'
+                     } //这里的toolbar值是模板元素的选择器
+
+                     ]
+                 ],
+                 id: 'dataCheck',
+                 url: url,
+                 size: 'lg',
+                 even: true, //开启隔行背景
+                 method: 'get', //这里get查询数据
+                 page: true,
+                 limits: [30, 60, 90, 150, 300],
+                 limit: 30 //默认采用30 默认分页30条
+                 ,
+                 loading: true,
+                 done: function(res, curr, count) { //关闭加载中弹层 无论同步异步一定调用的回调
+                     layer.close(layer.index); //关闭正在加载中弹出层
+                 }
+             });
+         }*/
+
+
+
+
+
+
+
+	 
+	}) 
+	
+
+
+	
+	
+	 
+</script>
